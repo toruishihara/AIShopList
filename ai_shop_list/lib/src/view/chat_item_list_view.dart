@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -61,9 +62,30 @@ class ChatItemListView extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Enter text',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.mic),
+                  onPressed: () {
+                    if (kDebugMode) {
+                      print("Mic pressed");
+
+                    }
+                    final vm = context.read<ChatViewModel>();
+                    vm.recordToWav().then((file) async {
+                      if (file == null) {
+                        if (kDebugMode) {
+                          print("Recording failed or permission denied");
+                        }
+                        return;
+                      }
+                      if (kDebugMode) {
+                        print("Recorded file: ${file.path}");
+                      }
+                    });
+                  },
+                ),
               ),
               onSubmitted: (value) async {
                 if (value.trim().isEmpty) return;
