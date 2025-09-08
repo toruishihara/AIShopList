@@ -27,12 +27,12 @@ class ChatViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _messages.add(ChatMessage(role:ChatRole.user, text:text));
+      _messages.add(ChatMessage(role: ChatRole.user, text: text));
       final json = await _client.chat(text);
       final reply = json['choices']?[0]?['message']?['content'] ?? '';
-      _messages.add(ChatMessage(role:ChatRole.openai, text:reply));
+      _messages.add(ChatMessage(role: ChatRole.openai, text: reply));
     } catch (e) {
-      _messages.add(ChatMessage(role:ChatRole.openai, text:e.toString()));
+      _messages.add(ChatMessage(role: ChatRole.openai, text: e.toString()));
     } finally {
       _loading = false;
       notifyListeners();
@@ -41,40 +41,55 @@ class ChatViewModel extends ChangeNotifier {
 
   /// 5秒だけ録音して WAV ファイルを返す（16kHz / モノラル想定）
   Future<File?> recordToWav() async {
-  final record = AudioRecorder();
+    final record = AudioRecorder();
 
-  // マイク権限
-  if (!await record.hasPermission()) {
-    final ok = await record.hasPermission();
-    if (kDebugMode) {
-      print('Microphone permission: $ok');
+    // マイク権限
+    if (!await record.hasPermission()) {
+      final ok = await record.hasPermission();
+      if (kDebugMode) {
+        print('Microphone permission: $ok');
+      }
+      if (!ok) return null;
     }
-    if (!ok) return null;
+
+    //final dir = await getTemporaryDirectory();
+    Directory? dir;
+    if (Platform.isAndroid) {
+      dir = await getExternalStorageDirectory();
+    } else {
+      dir = await getTemporaryDirectory();
+    }
+    if (dir == null) return null;
+    final path = '${dir.path}/rec_${DateTime.now().millisecondsSinceEpoch}.wav';
+
+    // 16kHz/PCM WAV（Whisper向けによく使われる設定）
+    const config = RecordConfig(
+      encoder: AudioEncoder.wav, // WAV で保存
+      sampleRate: 16000, // 16kHz
+      numChannels: 1, // モノラル
+      // bitRate は WAV(PCM)では指定不要（無圧縮）
+    );
+
+    await record.start(config, path: path);
+    await Future.delayed(const Duration(seconds: 5));
+    final outPath = await record.stop(); // 録音停止
+
+    if (outPath == null) return null;
+    return File(outPath);
   }
 
-  //final dir = await getTemporaryDirectory();
-  Directory? dir;
-  if (Platform.isAndroid) {
-    dir = await getExternalStorageDirectory();
-  } else {
-    dir = await getTemporaryDirectory();
+  Future<void> runTranscription(String path) async {
+    try {
+      final file = File(path);                 // e.g. /storage/emulated/0/…/sample.wav
+      final text = await _client.transcribeWav(
+        file,
+        language: 'en',                        // optional
+      );
+      // use `text` (update state, notify listeners, etc.)
+      print('Transcribed: $text');
+    } catch (e, st) {
+      // handle errors (network, file not found, 401, etc.)
+      print('Transcription failed: $e\n$st');
+    }
   }
-  if (dir == null) return null;
-  final path = '${dir.path}/rec_${DateTime.now().millisecondsSinceEpoch}.wav';
-
-  // 16kHz/PCM WAV（Whisper向けによく使われる設定）
-  const config = RecordConfig(
-    encoder: AudioEncoder.wav,    // WAV で保存
-    sampleRate: 16000,            // 16kHz
-    numChannels: 1,               // モノラル
-    // bitRate は WAV(PCM)では指定不要（無圧縮）
-  );
-
-  await record.start(config, path: path);
-  await Future.delayed(const Duration(seconds: 5));
-  final outPath = await record.stop(); // 録音停止
-
-  if (outPath == null) return null;
-  return File(outPath);
-}
 }

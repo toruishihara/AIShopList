@@ -80,9 +80,8 @@ class ChatItemListView extends StatelessWidget {
                         }
                         return;
                       }
-                      if (kDebugMode) {
-                        print("Recorded file: ${file.path}");
-                      }
+                      print("Recorded file: ${file.path}");
+                      vm.runTranscription(file.path);
                     });
                   },
                 ),
