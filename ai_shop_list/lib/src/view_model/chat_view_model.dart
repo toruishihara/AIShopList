@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 // ignore: depend_on_referenced_packages
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
@@ -22,8 +23,7 @@ class ChatViewModel extends ChangeNotifier {
     _messages.add(ChatMessage(role: ChatRole.openai, text: 'Good Bye'));
   }
 
-
-  Future<void> sendMessage(String text) async {
+  Future<String?> sendMessage(String text) async {
     _loading = true;
     notifyListeners();
 
@@ -32,11 +32,14 @@ class ChatViewModel extends ChangeNotifier {
       final json = await _client.chat(text);
       final reply = json['choices']?[0]?['message']?['content'] ?? '';
       _messages.add(ChatMessage(role: ChatRole.openai, text: reply));
-    } catch (e) {
-      _messages.add(ChatMessage(role: ChatRole.openai, text: e.toString()));
-    } finally {
       _loading = false;
       notifyListeners();
+      return reply;
+    } catch (e) {
+      _messages.add(ChatMessage(role: ChatRole.openai, text: e.toString()));
+      _loading = false;
+      notifyListeners();
+      return null;
     }
   }
 
@@ -46,7 +49,13 @@ class ChatViewModel extends ChangeNotifier {
       if (file != null) {
         final text = await runTranscription(file.path);
         if (text != null && text.isNotEmpty) {
-          await sendMessage(text);
+          final reply = await sendMessage(text);
+          if (reply != null && reply.isNotEmpty) {
+            final tts = FlutterTts();
+            await tts.setLanguage('en-US');
+            await tts.setSpeechRate(0.5);
+            await tts.speak(reply);
+          }
         } else {
           print("Transcription returned empty text");
         }
