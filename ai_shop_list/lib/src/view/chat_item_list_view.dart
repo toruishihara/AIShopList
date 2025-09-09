@@ -73,16 +73,7 @@ class ChatItemListView extends StatelessWidget {
 
                     }
                     final vm = context.read<ChatViewModel>();
-                    vm.recordToWav().then((file) async {
-                      if (file == null) {
-                        if (kDebugMode) {
-                          print("Recording failed or permission denied");
-                        }
-                        return;
-                      }
-                      print("Recorded file: ${file.path}");
-                      vm.runTranscription(file.path);
-                    });
+                    vm.handleMicButton();
                   },
                 ),
               ),

@@ -22,6 +22,7 @@ class ChatViewModel extends ChangeNotifier {
     _messages.add(ChatMessage(role: ChatRole.openai, text: 'Good Bye'));
   }
 
+
   Future<void> sendMessage(String text) async {
     _loading = true;
     notifyListeners();
@@ -36,6 +37,26 @@ class ChatViewModel extends ChangeNotifier {
     } finally {
       _loading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> handleMicButton() async {
+    try {
+      final file = await recordToWav();
+      if (file != null) {
+        final text = await runTranscription(file.path);
+        if (text != null && text.isNotEmpty) {
+          await sendMessage(text);
+        } else {
+          print("Transcription returned empty text");
+        }
+      } else {
+        print("Recording failed, file is null");
+      }
+    } catch (e, st) {
+      // handle any exceptions from either function
+      print("Error in recordAndTranscribe: $e");
+      print(st);
     }
   }
 
@@ -78,18 +99,20 @@ class ChatViewModel extends ChangeNotifier {
     return File(outPath);
   }
 
-  Future<void> runTranscription(String path) async {
+  Future<String?> runTranscription(String path) async {
     try {
-      final file = File(path);                 // e.g. /storage/emulated/0/…/sample.wav
+      final file = File(path); // e.g. /storage/emulated/0/…/sample.wav
       final text = await _client.transcribeWav(
         file,
-        language: 'en',                        // optional
+        language: 'en', // optional
       );
       // use `text` (update state, notify listeners, etc.)
-      print('Transcribed: $text');
+      print(' $text');
+      return text;
     } catch (e, st) {
       // handle errors (network, file not found, 401, etc.)
       print('Transcription failed: $e\n$st');
+      return null;
     }
   }
 }
