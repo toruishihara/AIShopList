@@ -16,7 +16,7 @@ class ChatItemListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chatViewModel = Provider.of<ChatViewModel>(context);
+    Provider.of<ChatViewModel>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -33,61 +33,87 @@ class ChatItemListView extends StatelessWidget {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: chatViewModel.messages.length,
-              itemBuilder: (context, index) {
-                final msg = chatViewModel.messages[index];
-                final isUser = msg.role == ChatRole.user;
-                return Align(
-                  alignment:
-                      isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Column(
-                    crossAxisAlignment: isUser
-                        ? CrossAxisAlignment.end
-                        : CrossAxisAlignment.start,
-                    children: [
-                      Text(msg.text),
-                      Text(isUser ? 'User' : 'Assistant',
-                          style: const TextStyle(
-                              fontSize: 12, color: Colors.grey)),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              decoration: InputDecoration(
-                labelText: 'Enter text',
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.mic),
-                  onPressed: () {
-                    if (kDebugMode) {
-                      print("Mic pressed");
+      body: Stack(
+        children: [ buildChatColumn(context), buildColumnExample(context) ],
+      ),
+    );
+  }
 
-                    }
-                    final vm = context.read<ChatViewModel>();
-                    vm.handleMicButton();
-                  },
-                ),
-              ),
-              onSubmitted: (value) async {
-                if (value.trim().isEmpty) return;
-                // read your ViewModel
-                final vm = context.read<ChatViewModel>();
-                // await the async function
-                await vm.sendMessage(value.trim());
-              },
-            ),
-          ),
+  Widget buildColumnExample(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.black, width: 2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Text("First item", style: TextStyle(color: Colors.black)),
+          Text("Second item", style: TextStyle(color: Colors.black)),
+          Text("Third item", style: TextStyle(color: Colors.black)),
         ],
       ),
+    );
+  }
+
+  Widget buildChatColumn(BuildContext context) {
+    final chatViewModel = Provider.of<ChatViewModel>(context);
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            itemCount: chatViewModel.messages.length,
+            itemBuilder: (context, index) {
+              final msg = chatViewModel.messages[index];
+              final isUser = msg.role == ChatRole.user;
+              return Align(
+                alignment:
+                    isUser ? Alignment.centerRight : Alignment.centerLeft,
+                child: Column(
+                  crossAxisAlignment: isUser
+                      ? CrossAxisAlignment.end
+                      : CrossAxisAlignment.start,
+                  children: [
+                    Text(msg.text),
+                    Text(isUser ? 'User' : 'Assistant',
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: TextField(
+            decoration: InputDecoration(
+              labelText: 'Enter text',
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.mic),
+                onPressed: () {
+                  if (kDebugMode) {
+                    print("Mic pressed");
+                  }
+                  final vm = context.read<ChatViewModel>();
+                  vm.handleMicButton();
+                },
+              ),
+            ),
+            onSubmitted: (value) async {
+              if (value.trim().isEmpty) return;
+              // read your ViewModel
+              final vm = context.read<ChatViewModel>();
+              // await the async function
+              await vm.sendMessage(value.trim());
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:ai_shop_list/src/repository/chat_repository.dart';
+import 'package:ai_shop_list/src/repository/transcription_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 // ignore: depend_on_referenced_packages
@@ -10,6 +12,8 @@ import '../network/open_ai_client.dart';
 
 class ChatViewModel extends ChangeNotifier {
   final OpenAiClient _client;
+  late final chatRepo = ChatRepository(_client);
+  late final transRepo = TranscriptionRepository(_client);
 
   bool _loading = false;
   bool get loading => _loading;
@@ -29,7 +33,7 @@ class ChatViewModel extends ChangeNotifier {
 
     try {
       _messages.add(ChatMessage(role: ChatRole.user, text: text));
-      final json = await _client.chat(text);
+      final json = await chatRepo.chat(text);
       final reply = json['choices']?[0]?['message']?['content'] ?? '';
       _messages.add(ChatMessage(role: ChatRole.openai, text: reply));
       _loading = false;
@@ -109,19 +113,6 @@ class ChatViewModel extends ChangeNotifier {
   }
 
   Future<String?> runTranscription(String path) async {
-    try {
-      final file = File(path); // e.g. /storage/emulated/0/…/sample.wav
-      final text = await _client.transcribeWav(
-        file,
-        language: 'en', // optional
-      );
-      // use `text` (update state, notify listeners, etc.)
-      print(' $text');
-      return text;
-    } catch (e, st) {
-      // handle errors (network, file not found, 401, etc.)
-      print('Transcription failed: $e\n$st');
-      return null;
-    }
+      return await transRepo.transcribe(path);
   }
 }
