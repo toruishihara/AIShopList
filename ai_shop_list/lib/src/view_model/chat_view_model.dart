@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
+import 'package:ai_shop_list/src/model/shop_item.dart';
 import 'package:ai_shop_list/src/repository/chat_repository.dart';
 import 'package:ai_shop_list/src/repository/transcription_repository.dart';
 import 'package:flutter/foundation.dart';
@@ -21,10 +24,25 @@ class ChatViewModel extends ChangeNotifier {
   final List<ChatMessage> _messages = [];
   List<ChatMessage> get messages => List.unmodifiable(_messages);
 
-  ChatViewModel(this._client) {
-    // Initialize with default items
-    _messages.add(ChatMessage(role: ChatRole.user, text: 'Hello'));
-    _messages.add(ChatMessage(role: ChatRole.openai, text: 'Good Bye'));
+  final List<ShopItem> _shopList = [];
+  List<ShopItem> get shopList => List.unmodifiable(_shopList);
+
+  ChatViewModel(this._client){
+    addShopItem(ShopItem(name: 'Pear', quantity: 1));
+    addShopItem(ShopItem(name: 'Pineapple', quantity: 1));
+  }
+  
+  void setShopListFromJson(List<dynamic> jsonList) {
+    print("Setting shop list from JSON: $jsonList");
+    _shopList
+      ..clear()
+      ..addAll(jsonList.map((j) => ShopItem.fromJson(j as Map<String, dynamic>)));
+    notifyListeners();
+  }
+
+  void addShopItem(ShopItem item) {
+    _shopList.add(item);
+    notifyListeners();
   }
 
   Future<String?> sendMessage(String text) async {
@@ -33,8 +51,17 @@ class ChatViewModel extends ChangeNotifier {
 
     try {
       _messages.add(ChatMessage(role: ChatRole.user, text: text));
-      final json = await chatRepo.chat(text);
-      final reply = json['choices']?[0]?['message']?['content'] ?? '';
+      final existingList = _shopList.map((item) => item.toJson()).toList();
+      final json = await chatRepo.SendMessageWithExisitingList(text, existingList);
+      final content = json['choices'][0]['message']['content'] as String;
+      final inner = jsonDecode(content) as Map<String, dynamic>;
+      final reply = inner['message'] as String;
+      final list = inner['list'] as List<dynamic>;
+      setShopListFromJson(list);
+      if (kDebugMode) {
+        print('Reply: $reply');
+        print('List: $list');
+      }
       _messages.add(ChatMessage(role: ChatRole.openai, text: reply));
       _loading = false;
       notifyListeners();
@@ -61,15 +88,23 @@ class ChatViewModel extends ChangeNotifier {
             await tts.speak(reply);
           }
         } else {
-          print("Transcription returned empty text");
+          if (kDebugMode) {
+            print("Transcription returned empty text");
+          }
         }
       } else {
-        print("Recording failed, file is null");
+        if (kDebugMode) {
+          print("Recording failed, file is null");
+        }
       }
     } catch (e, st) {
       // handle any exceptions from either function
-      print("Error in recordAndTranscribe: $e");
-      print(st);
+      if (kDebugMode) {
+        print("Error in recordAndTranscribe: $e");
+      }
+      if (kDebugMode) {
+        print(st);
+      }
     }
   }
 
@@ -113,6 +148,6 @@ class ChatViewModel extends ChangeNotifier {
   }
 
   Future<String?> runTranscription(String path) async {
-      return await transRepo.transcribe(path);
+    return await transRepo.transcribe(path);
   }
 }

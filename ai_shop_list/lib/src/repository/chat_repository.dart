@@ -1,4 +1,5 @@
 import 'package:ai_shop_list/src/network/open_ai_client.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -9,7 +10,7 @@ class ChatRepository {
   final List<Map<String, String>> _history = [];
   List<Map<String, String>> get history => List.unmodifiable(_history);
 
-  Future<Map<String, dynamic>> chat(String userText) async {
+  Future<Map<String, dynamic>> SendMessageWithExisitingList(String userText, List<Map<String, dynamic>> existingList) async {
     final uri = Uri.https(api.base, '/v1/chat/completions');
     final res = await http.post(
       uri,
@@ -20,7 +21,15 @@ class ChatRepository {
       body: jsonEncode({
         'model': 'gpt-4o-mini',
         'messages': [
-          {'role': 'user', 'content': userText}
+          {'role': 'system', 'content': api.systemPrompt},
+          {
+            'role': 'user',
+            'content': jsonEncode({
+              'instruction': userText,
+              'current_list':
+                  existingList,
+            })
+          }
         ],
       }),
     );

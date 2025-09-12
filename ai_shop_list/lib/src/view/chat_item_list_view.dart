@@ -34,12 +34,13 @@ class ChatItemListView extends StatelessWidget {
         ],
       ),
       body: Stack(
-        children: [ buildChatColumn(context), buildColumnExample(context) ],
+        children: [buildChatColumn(context), buildShopListColumn(context)],
       ),
     );
   }
 
-  Widget buildColumnExample(BuildContext context) {
+  Widget buildShopListColumn(BuildContext context) {
+    final chatViewModel = Provider.of<ChatViewModel>(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -47,14 +48,30 @@ class ChatItemListView extends StatelessWidget {
         border: Border.all(color: Colors.black, width: 2),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text("First item", style: TextStyle(color: Colors.black)),
-          Text("Second item", style: TextStyle(color: Colors.black)),
-          Text("Third item", style: TextStyle(color: Colors.black)),
-        ],
+      child: ListView.builder(
+        shrinkWrap: true,
+        physics: NeverScrollableScrollPhysics(),
+        itemCount: chatViewModel.shopList.length,
+        itemBuilder: (context, index) {
+          print("Building shop item at index $index");
+          final item = chatViewModel.shopList[index];
+          return Align(
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "${item.quantity} ${item.unit ?? ''} ${item.name}",
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

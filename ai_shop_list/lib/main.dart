@@ -21,8 +21,8 @@ void main() async {
   // SettingsView.
   runApp(
     ChangeNotifierProvider(
-        create: (_) => ChatViewModel(OpenAiClient()),
-        child: MyApp(settingsController: settingsController),
+      create: (_) => ChatViewModel(OpenAiClient()),
+      child: MyApp(settingsController: settingsController),
     ),
   );
 

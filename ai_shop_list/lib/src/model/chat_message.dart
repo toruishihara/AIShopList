@@ -1,4 +1,4 @@
-enum ChatRole { user, openai }
+enum ChatRole { system, user, openai }
 
 class ChatMessage {
   final ChatRole role;

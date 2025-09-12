@@ -24,7 +24,9 @@ class TranscriptionRepository {
       return text;
     } catch (e, st) {
       // handle errors (network, file not found, 401, etc.)
-      print('Transcription failed: $e\n$st');
+      if (kDebugMode) {
+        print('Transcription failed: $e\n$st');
+      }
       return null;
     }
   }
