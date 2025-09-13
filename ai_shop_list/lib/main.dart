@@ -1,4 +1,7 @@
+import 'package:ai_shop_list/src/repository/shop_list_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'src/app.dart';
@@ -8,22 +11,19 @@ import 'src/settings/settings_service.dart';
 import 'src/view_model/chat_view_model.dart';
 
 void main() async {
-  // Set up the SettingsController, which will glue user settings to multiple
-  // Flutter Widgets.
-  final settingsController = SettingsController(SettingsService());
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
 
-  // Load the user's preferred theme while the splash screen is displayed.
-  // This prevents a sudden theme change when the app is first displayed.
+  final settingsController = SettingsController(SettingsService());
   await settingsController.loadSettings();
 
-  // Run the app and pass in the SettingsController. The app listens to the
-  // SettingsController for changes, then passes it further down to the
-  // SettingsView.
+  final box = await Hive.openBox('shoplistBox');
+  final shopRepo = ShopListRepository(box);
+
   runApp(
     ChangeNotifierProvider(
-      create: (_) => ChatViewModel(OpenAiClient()),
+      create: (_) => ChatViewModel(OpenAiClient(), shopRepo),
       child: MyApp(settingsController: settingsController),
     ),
   );
-
 }

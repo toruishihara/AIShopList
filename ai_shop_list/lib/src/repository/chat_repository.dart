@@ -1,5 +1,4 @@
 import 'package:ai_shop_list/src/network/open_ai_client.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -10,7 +9,7 @@ class ChatRepository {
   final List<Map<String, String>> _history = [];
   List<Map<String, String>> get history => List.unmodifiable(_history);
 
-  Future<Map<String, dynamic>> SendMessageWithExisitingList(String userText, List<Map<String, dynamic>> existingList) async {
+  Future<Map<String, dynamic>> sendMessageWithExisitingList(String userText, List<Map<String, dynamic>> existingList) async {
     final uri = Uri.https(api.base, '/v1/chat/completions');
     final res = await http.post(
       uri,

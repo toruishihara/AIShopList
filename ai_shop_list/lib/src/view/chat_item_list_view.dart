@@ -53,7 +53,6 @@ class ChatItemListView extends StatelessWidget {
         physics: NeverScrollableScrollPhysics(),
         itemCount: chatViewModel.shopList.length,
         itemBuilder: (context, index) {
-          print("Building shop item at index $index");
           final item = chatViewModel.shopList[index];
           return Align(
             alignment: Alignment.centerLeft,

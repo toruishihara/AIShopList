@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:ai_shop_list/src/model/shop_item.dart';
 import 'package:ai_shop_list/src/repository/chat_repository.dart';
+import 'package:ai_shop_list/src/repository/shop_list_repository.dart';
 import 'package:ai_shop_list/src/repository/transcription_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -17,6 +17,7 @@ class ChatViewModel extends ChangeNotifier {
   final OpenAiClient _client;
   late final chatRepo = ChatRepository(_client);
   late final transRepo = TranscriptionRepository(_client);
+  final ShopListRepository _repository;
 
   bool _loading = false;
   bool get loading => _loading;
@@ -24,24 +25,29 @@ class ChatViewModel extends ChangeNotifier {
   final List<ChatMessage> _messages = [];
   List<ChatMessage> get messages => List.unmodifiable(_messages);
 
-  final List<ShopItem> _shopList = [];
+  List<ShopItem> _shopList = [];
   List<ShopItem> get shopList => List.unmodifiable(_shopList);
 
-  ChatViewModel(this._client){
-    addShopItem(ShopItem(name: 'Pear', quantity: 1));
-    addShopItem(ShopItem(name: 'Pineapple', quantity: 1));
+  ChatViewModel(this._client, this._repository){
+    _shopList = _repository.getItems();
+    //addShopItem(ShopItem(name: 'Pear', quantity: 1));
+    //addShopItem(ShopItem(name: 'Pineapple', quantity: 1));
   }
-  
+
   void setShopListFromJson(List<dynamic> jsonList) {
-    print("Setting shop list from JSON: $jsonList");
+    if (kDebugMode) {
+      print("Setting shop list from JSON: $jsonList");
+    }
     _shopList
       ..clear()
       ..addAll(jsonList.map((j) => ShopItem.fromJson(j as Map<String, dynamic>)));
+    _repository.saveAll(_shopList);
     notifyListeners();
   }
 
   void addShopItem(ShopItem item) {
     _shopList.add(item);
+    _repository.addItem(item);
     notifyListeners();
   }
 
@@ -52,7 +58,7 @@ class ChatViewModel extends ChangeNotifier {
     try {
       _messages.add(ChatMessage(role: ChatRole.user, text: text));
       final existingList = _shopList.map((item) => item.toJson()).toList();
-      final json = await chatRepo.SendMessageWithExisitingList(text, existingList);
+      final json = await chatRepo.sendMessageWithExisitingList(text, existingList);
       final content = json['choices'][0]['message']['content'] as String;
       final inner = jsonDecode(content) as Map<String, dynamic>;
       final reply = inner['message'] as String;
