@@ -1,6 +1,5 @@
 import 'package:ai_shop_list/src/repository/shop_list_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 

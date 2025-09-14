@@ -1,5 +1,5 @@
 name: ai_shop_list
-description: "A new Flutter project."
+description: "Shop List app with Voice recognition."
 
 # Prevent accidental publishing to pub.dev.
 publish_to: 'none'
@@ -27,6 +27,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
   build_runner: ^2.4.11
   hive_generator: ^2.0.1
 
@@ -36,3 +37,9 @@ flutter:
   assets:
     # Add assets from the images directory to the application.
     - assets/images/
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true

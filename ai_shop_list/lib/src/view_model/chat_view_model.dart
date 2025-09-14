@@ -114,11 +114,9 @@ class ChatViewModel extends ChangeNotifier {
     }
   }
 
-  /// 5秒だけ録音して WAV ファイルを返す（16kHz / モノラル想定）
   Future<File?> recordToWav() async {
     final record = AudioRecorder();
 
-    // マイク権限
     if (!await record.hasPermission()) {
       final ok = await record.hasPermission();
       if (kDebugMode) {
@@ -127,7 +125,6 @@ class ChatViewModel extends ChangeNotifier {
       if (!ok) return null;
     }
 
-    //final dir = await getTemporaryDirectory();
     Directory? dir;
     if (Platform.isAndroid) {
       dir = await getExternalStorageDirectory();
