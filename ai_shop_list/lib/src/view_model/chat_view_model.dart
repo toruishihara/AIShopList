@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:ai_shop_list/src/audio/record_until_silence.dart';
 import 'package:ai_shop_list/src/model/shop_item.dart';
 import 'package:ai_shop_list/src/repository/chat_repository.dart';
 import 'package:ai_shop_list/src/repository/shop_list_repository.dart';
@@ -18,6 +19,11 @@ class ChatViewModel extends ChangeNotifier {
   late final chatRepo = ChatRepository(_client);
   late final transRepo = TranscriptionRepository(_client);
   final ShopListRepository _repository;
+  RecordUntilSilence? _recorder;
+  bool _isRecording = false;
+  File? lastFile;
+
+  bool get isRecording => _isRecording;
 
   bool _loading = false;
   bool get loading => _loading;
@@ -28,7 +34,7 @@ class ChatViewModel extends ChangeNotifier {
   List<ShopItem> _shopList = [];
   List<ShopItem> get shopList => List.unmodifiable(_shopList);
 
-  ChatViewModel(this._client, this._repository){
+  ChatViewModel(this._client, this._repository) {
     _shopList = _repository.getItems();
     //addShopItem(ShopItem(name: 'Pear', quantity: 1));
     //addShopItem(ShopItem(name: 'Pineapple', quantity: 1));
@@ -40,7 +46,8 @@ class ChatViewModel extends ChangeNotifier {
     }
     _shopList
       ..clear()
-      ..addAll(jsonList.map((j) => ShopItem.fromJson(j as Map<String, dynamic>)));
+      ..addAll(
+          jsonList.map((j) => ShopItem.fromJson(j as Map<String, dynamic>)));
     _repository.saveAll(_shopList);
     notifyListeners();
   }
@@ -58,7 +65,8 @@ class ChatViewModel extends ChangeNotifier {
     try {
       _messages.add(ChatMessage(role: ChatRole.user, text: text));
       final existingList = _shopList.map((item) => item.toJson()).toList();
-      final json = await chatRepo.sendMessageWithExisitingList(text, existingList);
+      final json =
+          await chatRepo.sendMessageWithExisitingList(text, existingList);
       final content = json['choices'][0]['message']['content'] as String;
       final inner = jsonDecode(content) as Map<String, dynamic>;
       final reply = inner['message'] as String;
@@ -80,7 +88,7 @@ class ChatViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> handleMicButton() async {
+  Future<void> handleMicButton5Sec() async {
     try {
       final file = await recordToWav();
       if (file != null) {
@@ -114,6 +122,64 @@ class ChatViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> handleMicButton() async {
+    try {
+      await startRecording();
+    } catch (e, st) {
+      if (kDebugMode) {
+        print("Error starting recording: $e");
+        print(st);
+      }
+    }
+  }
+
+  Future<void> startRecording() async {
+    _recorder = RecordUntilSilence(
+      silenceThresholdDb: -10,
+      silenceDurationMs: 1000,
+      onSentenceEnd: (file) async {
+        lastFile = file;
+        _isRecording = false;
+        notifyListeners();
+        print("Sentence ended, saved to: ${file.path}");
+        // 👉 here you can upload to Whisper or process text
+        final text = await runTranscription(file.path);
+        if (text != null && text.isNotEmpty) {
+          final reply = await sendMessage(text);
+          if (reply != null && reply.isNotEmpty) {
+            final tts = FlutterTts();
+            await tts.setLanguage('en-US');
+            await tts.setSpeechRate(0.5);
+            await tts.speak(reply);
+          }
+        } else {
+          if (kDebugMode) {
+            print("Transcription returned empty text");
+          }
+        }
+      },
+    );
+
+    final tmpFile = await createTempFile();
+    if (tmpFile == null) {
+      throw Exception("Temporary file could not be created.");
+    }
+    final path = tmpFile.path;
+
+    final file = await _recorder!.start(path);
+    lastFile = file;
+    _isRecording = true;
+    notifyListeners();
+  }
+
+  void stopRecording() async {
+    if (_recorder != null && _isRecording) {
+      await _recorder!.stop(lastFile!);
+      _isRecording = false;
+      notifyListeners();
+    }
+  }
+
   Future<File?> recordToWav() async {
     final record = AudioRecorder();
 
@@ -125,14 +191,9 @@ class ChatViewModel extends ChangeNotifier {
       if (!ok) return null;
     }
 
-    Directory? dir;
-    if (Platform.isAndroid) {
-      dir = await getExternalStorageDirectory();
-    } else {
-      dir = await getTemporaryDirectory();
-    }
-    if (dir == null) return null;
-    final path = '${dir.path}/rec_${DateTime.now().millisecondsSinceEpoch}.wav';
+    final tmpFile = await createTempFile();
+    if (tmpFile == null) return null;
+    final path = tmpFile.path;
 
     // 16kHz/PCM WAV（Whisper向けによく使われる設定）
     const config = RecordConfig(
@@ -152,5 +213,18 @@ class ChatViewModel extends ChangeNotifier {
 
   Future<String?> runTranscription(String path) async {
     return await transRepo.transcribe(path);
+  }
+
+  Future<File?> createTempFile() async {
+    Directory? dir;
+    if (Platform.isAndroid) {
+      dir = await getExternalStorageDirectory();
+    } else {
+      dir = await getTemporaryDirectory();
+    }
+    if (dir == null) return null;
+    final path = '${dir.path}/rec_${DateTime.now().millisecondsSinceEpoch}.wav';
+    final file = File(path);
+    return file;
   }
 }
